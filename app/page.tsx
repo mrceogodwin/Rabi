@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import LiveMap from "./LiveMap";
 
 type JourneyEntry = { id: string; destination: string; origin: string; mode: "drive" | "walk"; createdAt: string };
 type IconName = "pin" | "mic" | "arrow" | "car" | "walk" | "clock" | "target" | "chevron" | "spark" | "coffee" | "shopping" | "home" | "briefcase" | "compass" | "heart" | "layers";
@@ -156,25 +157,7 @@ export default function Home() {
 
       <div className="map-panel">
         <div className="map-topline"><div><span className="map-live-dot"/><span>YOUR CITY AT A GLANCE</span></div><button className="map-control" onClick={() => setNotice("Live map controls will be available after map integration.")} aria-label="Map controls"><Icon name="target" size={18}/></button></div>
-        <div className="map-art" aria-label="Illustrated map preview, not live navigation">
-          <svg className="map-svg" viewBox="0 0 620 610" role="img" aria-label="Decorative city street map with a highlighted route">
-            <defs><pattern id="blocks" width="110" height="95" patternUnits="userSpaceOnUse"><rect x="8" y="8" width="35" height="27" rx="5" fill="#ebe7f8"/><rect x="52" y="10" width="48" height="35" rx="5" fill="#f0edf9"/><rect x="10" y="44" width="30" height="40" rx="5" fill="#f1eef9"/><rect x="48" y="53" width="52" height="30" rx="5" fill="#e7e2f6"/></pattern><filter id="shadow" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="5" stdDeviation="5" floodColor="#4b2ba5" floodOpacity=".18"/></filter></defs>
-            <rect width="620" height="610" fill="#faf9fe"/><rect width="620" height="610" fill="url(#blocks)"/>
-            <path d="M-40 120 C110 160 130 80 250 130 S420 230 670 160" stroke="#dcd6ed" strokeWidth="23" fill="none"/><path d="M-40 120 C110 160 130 80 250 130 S420 230 670 160" stroke="#fff" strokeWidth="16" fill="none"/>
-            <path d="M100 -30 C140 100 180 170 145 280 S170 470 230 650" stroke="#dcd6ed" strokeWidth="28" fill="none"/><path d="M100 -30 C140 100 180 170 145 280 S170 470 230 650" stroke="#fff" strokeWidth="20" fill="none"/>
-            <path d="M330 -30 C290 90 365 180 330 270 S390 420 360 650" stroke="#dcd6ed" strokeWidth="24" fill="none"/><path d="M330 -30 C290 90 365 180 330 270 S390 420 360 650" stroke="#fff" strokeWidth="16" fill="none"/>
-            <path d="M-20 400 C120 350 200 420 310 390 S500 340 650 400" stroke="#dcd6ed" strokeWidth="27" fill="none"/><path d="M-20 400 C120 350 200 420 310 390 S500 340 650 400" stroke="#fff" strokeWidth="19" fill="none"/>
-            <path d="M480 -20 C445 80 490 180 455 280 S490 470 530 640" stroke="#dcd6ed" strokeWidth="21" fill="none"/><path d="M480 -20 C445 80 490 180 455 280 S490 470 530 640" stroke="#fff" strokeWidth="14" fill="none"/>
-            <path d="M145 280 C190 300 225 330 250 365 S305 410 360 390 S410 320 455 280" stroke="#b5a0ff" strokeWidth="13" fill="none" strokeLinecap="round" opacity=".35"/><path d="M145 280 C190 300 225 330 250 365 S305 410 360 390 S410 320 455 280" stroke="#7447ed" strokeWidth="6" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-            <circle cx="145" cy="280" r="12" fill="#fff" stroke="#7447ed" strokeWidth="5"/><circle cx="455" cy="280" r="12" fill="#fff" stroke="#7447ed" strokeWidth="5"/>
-            <g filter="url(#shadow)" transform="translate(105 208)"><rect width="120" height="34" rx="12" fill="#fff"/><text x="60" y="22" fontSize="12" fontWeight="700" textAnchor="middle" fill="#282139">You are here</text></g>
-            <g filter="url(#shadow)" transform="translate(392 218)"><rect width="115" height="34" rx="12" fill="#fff"/><text x="57.5" y="22" fontSize="12" fontWeight="700" textAnchor="middle" fill="#282139">Destination</text></g>
-            <g transform="translate(210 70)"><rect width="160" height="48" rx="15" fill="#fff" stroke="#eee9fa"/><text x="14" y="19" fontSize="10" fontWeight="700" fill="#8a829f" letterSpacing="1">JOURNEY PREVIEW</text><text x="14" y="36" fontSize="15" fontWeight="750" fill="#4f2bc0">Your next move</text></g>
-            <text x="35" y="520" fontSize="12" fontWeight="700" fill="#a49ab9" letterSpacing="2">RABI CITY VIEW</text>
-            <g transform="translate(500 490)"><circle cx="28" cy="28" r="27" fill="#fff" stroke="#eee9fa"/><path d="M28 13v30M13 28h30" stroke="#a69bbd" strokeWidth="1.5"/><circle cx="28" cy="28" r="8" fill="none" stroke="#7447ed" strokeWidth="2"/></g>
-          </svg>
-          <div className="map-caption"><span className="caption-mark"><Icon name="pin" size={15}/></span><div><strong>{selected || "Choose a destination"}</strong><small>Illustrative route · Not live data</small></div><span className="caption-arrow"><Icon name="arrow" size={17}/></span></div>
-        </div>
+        <LiveMap destination={selected} />
         <div className="map-footer"><span><span className="footer-dot"/> Route preview</span><span>BENIN CITY · DEMO</span></div>
       </div>
     </section>

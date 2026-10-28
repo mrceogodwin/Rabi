@@ -8,18 +8,18 @@ This repository contains the first interactive UI foundation, built with Next.js
 
 ### Included
 - Responsive home screen and Rabi brand direction
-- Destination input with a small set of illustrative demo suggestions
-- Interactive drive/walk presentation states
-- Route preview artwork and clear demo-status messaging
-- Accessible labels and reduced-motion support
+- Interactive OpenStreetMap tiles powered by Leaflet
+- Destination geocoding via OpenStreetMap Nominatim
+- Optional browser GPS and driving route geometry via the public OSRM demo endpoint
+- Drive/walk presentation states, saved places, and locally persisted journey previews
+- Ride request preview with explicit demo-only messaging
 
 ### Not connected yet
-- Device GPS and live location permissions
-- Live map tiles, geocoding, routing, traffic, or turn-by-turn navigation
+- Turn-by-turn navigation, live traffic, guaranteed routing availability, or offline maps
 - Voice search
-- Authentication, user profiles, ride booking, or backend APIs
+- Authentication, account sync, verified drivers, live ride booking, payment, or a production ride backend
 
-No route times or map artwork should be treated as live navigation data.
+Map tiles, geocoding, and routing require an internet connection and use public community/demo services. Route estimates can be incomplete and must not be treated as safety-critical navigation instructions.
 
 ## Run locally
 

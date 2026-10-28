@@ -21,3 +21,17 @@
 
 /* Local journey history */
 .history-section{padding:36px 0 68px;border-top:1px solid #f2eff7}.history-empty{display:flex;align-items:center;gap:15px;border:1px dashed #e8e1f4;border-radius:18px;padding:22px;background:#fcfbff}.history-empty-icon,.history-mode-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:#f1ecff;color:#7048e8;flex-shrink:0}.history-empty strong,.history-item-copy strong{display:block;font-size:13px}.history-empty p{font-size:11px;line-height:1.6;color:#938ba2;margin:5px 0 0}.history-list{border:1px solid #eeeaf5;border-radius:18px;overflow:hidden}.history-item{display:flex;align-items:center;gap:13px;padding:14px 16px;border-bottom:1px solid #f1eef6}.history-item:last-child{border-bottom:0}.history-item-copy{display:flex;flex-direction:column;gap:5px;flex:1;min-width:0}.history-item-copy small{font-size:10px;line-height:1.5;color:#9a92aa;overflow-wrap:anywhere}.history-item .save-button{font-size:20px;line-height:1}@media(max-width:640px){.history-item{gap:9px;padding:12px 10px}.history-mode-icon{width:35px;height:35px}.history-item-copy small{font-size:9px}.history-item .saved-go{font-size:10px}}
+
+
+/* Live map and routing interface */
+.live-map-wrap{position:relative;overflow:hidden;border-radius:16px;background:#f4f1fa}
+.live-map{height:auto;aspect-ratio:1.02;width:100%;min-height:300px;background:#f4f1fa;z-index:1}
+.live-map .leaflet-control-attribution{font-size:8px}
+.live-map .leaflet-control-zoom a{color:#5b35d1;border-color:#eee8fa}
+.live-map-tools{display:flex;align-items:flex-start;gap:10px;justify-content:space-between;padding:11px 12px 4px;background:#fff}
+.live-map-status{display:flex;flex-direction:column;gap:5px;font-size:10px;line-height:1.5;color:#7f7595;min-width:0}
+.live-map-status .map-live-dot{flex-shrink:0}
+.live-map-status strong{font-size:11px;color:#4f2bbd}
+.live-map-location{border:1px solid #e8e0fb;background:#f6f2ff;color:#6742d3;border-radius:10px;padding:9px 10px;font-size:10px;font-weight:700;white-space:nowrap}
+.live-map-attribution-note{margin:0;padding:5px 12px 11px;background:#fff;font-size:9px;line-height:1.5;color:#a19aae}
+@media(max-width:760px){.live-map{aspect-ratio:1.08;min-height:290px}.live-map-tools{padding:10px;gap:7px}.live-map-location{font-size:9px;padding:8px}.live-map-attribution-note{padding:4px 10px 10px}}
