@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import LiveMap from "./LiveMap";
 
 type JourneyEntry = { id: string; destination: string; origin: string; mode: "drive" | "walk"; createdAt: string };
+type NearbyResult = { id: string; name: string; address: string; lat: number; lon: number; category: string };
 type IconName = "pin" | "mic" | "arrow" | "car" | "walk" | "clock" | "target" | "chevron" | "spark" | "coffee" | "shopping" | "home" | "briefcase" | "compass" | "heart" | "layers";
 function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true as const };
@@ -61,6 +62,10 @@ export default function Home() {
   const [ridePickup, setRidePickup] = useState("Current location");
   const [rideDestination, setRideDestination] = useState("");
   const [rideNotice, setRideNotice] = useState("");
+  const [nearbyResults, setNearbyResults] = useState<NearbyResult[]>([]);
+  const [nearbyLoading, setNearbyLoading] = useState(false);
+  const [nearbyMessage, setNearbyMessage] = useState("");
+  const [nearbyCategory, setNearbyCategory] = useState("");
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem("rabi:saved-places");
@@ -155,6 +160,49 @@ export default function Home() {
     }
   }
 
+  async function discoverPlaces(item: typeof nearby[number]) {
+    setNearbyCategory(item.name);
+    setNearbyLoading(true);
+    setNearbyMessage("");
+    setNearbyResults([]);
+    const searchTerm = item.name === "Coffee & catch-ups"
+      ? "cafe"
+      : item.name === "Everyday essentials"
+        ? "supermarket"
+        : "tourism";
+    try {
+      const params = new URLSearchParams({
+        format: "jsonv2",
+        limit: "8",
+        addressdetails: "1",
+        q: `${searchTerm} in Benin City, Edo State, Nigeria`
+      });
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
+      if (!response.ok) throw new Error("Live place search is temporarily unavailable.");
+      const data: unknown = await response.json();
+      if (!Array.isArray(data)) throw new Error("Place search returned an unexpected response.");
+      const results = data.map((item: any, index: number) => {
+        const address = item.address || {};
+        const placeName = String(item.name || item.display_name?.split(",")[0] || "Place nearby");
+        const placeAddress = String(item.display_name || "Benin City, Edo State");
+        return {
+          id: String(item.place_id || `${item.lat}-${item.lon}-${index}`),
+          name: placeName,
+          address: placeAddress,
+          lat: Number(item.lat),
+          lon: Number(item.lon),
+          category: String(item.type || address.amenity || searchTerm)
+        } satisfies NearbyResult;
+      }).filter((item: NearbyResult) => Number.isFinite(item.lat) && Number.isFinite(item.lon));
+      setNearbyResults(results);
+      setNearbyMessage(results.length ? `Showing live OpenStreetMap search results for ${item.name.toLowerCase()} in Benin City. Listings may be incomplete.` : "No matching places found for this category. Try another category or search a destination above.");
+    } catch (error) {
+      setNearbyMessage(error instanceof Error ? error.message : "Could not load nearby places. Please try again.");
+    } finally {
+      setNearbyLoading(false);
+    }
+  }
+
   function previewRideRequest() {
     if (!rideDestination.trim()) { setRideNotice("Enter where you want to go to preview a ride."); return; }
     setRideNotice("Ride preview only. No driver has been contacted and no booking or payment was created. Driver matching, live fares and payments need a backend connection.");
@@ -231,8 +279,12 @@ export default function Home() {
     </section>
 
     <section className="nearby-section" id="nearby">
-      <div className="section-heading"><div><span className="eyebrow">MORE THAN DIRECTIONS</span><h2>Find your kind of place.</h2><p>Discover the city one stop at a time.</p></div><button className="text-action" onClick={() => setNotice("Nearby discovery will be powered by live place data in a future stage.")}>Explore nearby <Icon name="arrow" size={16}/></button></div>
-      <div className="nearby-grid">{nearby.map((item) => <button className="nearby-card" key={item.name} onClick={() => setNotice(item.name + " discovery is planned; live business listings are not connected yet.")}><span className={"nearby-art " + item.tint}><Icon name={item.icon} size={25}/></span><span className="nearby-copy"><strong>{item.name}</strong><small>{item.kind}</small></span><span className="nearby-arrow"><Icon name="arrow" size={17}/></span></button>)}</div>
+      <div className="section-heading"><div><span className="eyebrow">MORE THAN DIRECTIONS</span><h2>Find your kind of place.</h2><p>Discover the city one stop at a time.</p></div><button className="text-action" onClick={() => discoverPlaces(nearby[2])}>Explore nearby <Icon name="arrow" size={16}/></button></div>
+      <div className="nearby-grid">{nearby.map((item) => <button className={nearbyCategory === item.name ? "nearby-card nearby-card-active" : "nearby-card"} key={item.name} onClick={() => discoverPlaces(item)} aria-pressed={nearbyCategory === item.name}><span className={"nearby-art " + item.tint}><Icon name={item.icon} size={25}/></span><span className="nearby-copy"><strong>{item.name}</strong><small>{item.kind}</small></span><span className="nearby-arrow"><Icon name="arrow" size={17}/></span></button>)}</div>
+      {nearbyLoading && <p className="nearby-status" role="status">Searching OpenStreetMap for places in Benin City…</p>}
+      {nearbyMessage && <p className="nearby-status" role="status">{nearbyMessage}</p>}
+      {nearbyResults.length > 0 && <div className="nearby-results" aria-label="Place search results">{nearbyResults.map((place) => <article className="nearby-result" key={place.id}><span className="saved-pin"><Icon name="pin" size={18}/></span><span className="nearby-result-copy"><strong>{place.name}</strong><small>{place.address}</small></span><button className="nearby-result-action" onClick={() => { choosePlace(place.name + ", Benin City, Nigeria"); setNotice("Selected a place from live search. Use your GPS location on the map to calculate a driving route."); document.getElementById("destination")?.scrollIntoView({behavior:"smooth",block:"center"}); }}>Route</button><button className="save-button" aria-label={"Save " + place.name} onClick={() => { const name = place.name + ", Benin City"; toggleSaved(name); setNotice("Saved place updated on this device."); }}><Icon name="heart" size={17}/></button></article>)}</div>}
+      <p className="nearby-attribution">Place results provided by OpenStreetMap contributors via Nominatim. Search results are not endorsements and may be incomplete.</p>
     </section>
 
     <section className="saved-section" id="saved">
