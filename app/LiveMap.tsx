@@ -22,15 +22,28 @@ function loadLeaflet(): Promise<any> {
       link.dataset.rabiLeaflet = "true";
       document.head.appendChild(link);
     }
+
+    const handleLoad = () => {
+      if (window.L) resolve(window.L);
+      else reject(new Error("Map library downloaded but did not initialize."));
+    };
+    const handleError = () => reject(new Error("The map library could not load. Check your internet connection."));
+
     if (!script) {
       script = document.createElement("script");
       script.src = LEAFLET_JS;
       script.async = true;
       script.dataset.rabiLeaflet = "true";
+      script.addEventListener("load", handleLoad, { once: true });
+      script.addEventListener("error", handleError, { once: true });
       document.body.appendChild(script);
+      return;
     }
-    script.addEventListener("load", () => window.L ? resolve(window.L) : reject(new Error("Map library did not initialize.")), { once: true });
-    script.addEventListener("error", () => reject(new Error("The map library could not load. Check your internet connection.")), { once: true });
+
+    // A shared script may have finished loading before this component attached
+    // its listeners. Check the global both before and after registering events.
+    script.addEventListener("load", handleLoad, { once: true });
+    script.addEventListener("error", handleError, { once: true });
     if (window.L) resolve(window.L);
   });
 }
