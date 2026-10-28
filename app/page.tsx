@@ -190,7 +190,7 @@ export default function Home() {
 
       <div className="map-panel">
         <div className="map-topline"><div><span className="map-live-dot"/><span>YOUR CITY AT A GLANCE</span></div><button className="map-control" onClick={() => setNotice("Use the map zoom controls or “Use my location” button to move around the live map.")} aria-label="Map controls"><Icon name="target" size={18}/></button></div>
-        <LiveMap destination={selected} />
+        <LiveMap destination={selected} mode={mode} />
         <div className="map-footer"><span><span className="footer-dot"/> Route preview</span><span>BENIN CITY · DEMO</span></div>
       </div>
     </section>

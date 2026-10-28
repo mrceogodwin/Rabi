@@ -59,7 +59,7 @@ async function geocode(query: string): Promise<Point | null> {
   return { lat: Number(results[0].lat), lon: Number(results[0].lon), label: String(results[0].display_name || query) };
 }
 
-export default function LiveMap({ destination }: { destination: string }) {
+export default function LiveMap({ destination, mode = "drive" }: { destination: string; mode?: "drive" | "walk" }) {
   const elementRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const LRef = useRef<any>(null);
@@ -116,6 +116,14 @@ export default function LiveMap({ destination }: { destination: string }) {
         const L = LRef.current;
         if (destinationMarkerRef.current) destinationMarkerRef.current.remove();
         destinationMarkerRef.current = L.marker([point.lat, point.lon]).addTo(mapRef.current).bindPopup(point.label);
+        if (mode === "walk") {
+          if (routeRef.current) { routeRef.current.remove(); routeRef.current = null; }
+          setRouteSteps([]);
+          setRouteSummary("");
+          mapRef.current.setView([point.lat, point.lon], 14);
+          setMapStatus("Destination found · walking routes are not available from the demo routing service");
+          return;
+        }
         if (originRef.current) {
           const origin = originRef.current;
           setMapStatus("Calculating road route…");
@@ -148,7 +156,7 @@ export default function LiveMap({ destination }: { destination: string }) {
     }
     updateDestination();
     return () => { cancelled = true; };
-  }, [destination, mapReady]);
+  }, [destination, mapReady, mode]);
 
   function useLocation() {
     if (!navigator.geolocation) { setGpsStatus("GPS not supported"); return; }
@@ -163,6 +171,12 @@ export default function LiveMap({ destination }: { destination: string }) {
         mapRef.current.setView([point.lat, point.lon], 14);
       }
       setGpsStatus("Location ready");
+      if (destination.trim() && mode === "walk") {
+        setMapStatus("GPS location ready · walking routes are not available from the demo routing service");
+        setRouteSteps([]);
+        setRouteSummary("");
+        return;
+      }
       if (destination.trim()) {
         // Re-trigger the destination effect after the origin is saved.
         setMapStatus("Location ready · calculating route…");
