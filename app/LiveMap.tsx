@@ -52,6 +52,7 @@ export default function LiveMap({ destination }: { destination: string }) {
   const originMarkerRef = useRef<any>(null);
   const routeRef = useRef<any>(null);
   const [mapStatus, setMapStatus] = useState("Loading live map…");
+  const [mapReady, setMapReady] = useState(false);
   const [gpsStatus, setGpsStatus] = useState("Use my location");
   const [routeSummary, setRouteSummary] = useState("");
 
@@ -67,6 +68,7 @@ export default function LiveMap({ destination }: { destination: string }) {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors'
       }).addTo(map);
       mapRef.current = map;
+      setMapReady(true);
       setMapStatus("Live map ready · Benin City");
     }).catch((error) => { if (!cancelled) setMapStatus(error instanceof Error ? error.message : "Map unavailable."); });
     return () => {
@@ -78,7 +80,7 @@ export default function LiveMap({ destination }: { destination: string }) {
   useEffect(() => {
     let cancelled = false;
     async function updateDestination() {
-      if (!destination.trim() || !mapRef.current || !LRef.current) {
+      if (!mapReady || !destination.trim() || !mapRef.current || !LRef.current) {
         setRouteSummary("");
         return;
       }
@@ -115,7 +117,7 @@ export default function LiveMap({ destination }: { destination: string }) {
     }
     updateDestination();
     return () => { cancelled = true; };
-  }, [destination]);
+  }, [destination, mapReady]);
 
   function useLocation() {
     if (!navigator.geolocation) { setGpsStatus("GPS not supported"); return; }
