@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 type IconName = "pin" | "mic" | "arrow" | "car" | "walk" | "clock" | "target" | "chevron" | "spark" | "coffee" | "shopping" | "home" | "briefcase" | "compass" | "heart" | "layers";
 function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true as const };
-  const paths: Record<IconName, React.ReactNode> = {
+  const paths: Record<IconName, ReactNode> = {
     pin: <><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></>,
     mic: <><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-4 0h8"/></>,
     arrow: <><path d="M5 12h14M13 5l7 7-7 7"/></>,
