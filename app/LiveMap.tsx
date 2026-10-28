@@ -35,6 +35,22 @@ function loadLeaflet(): Promise<any> {
   });
 }
 
+
+function describeStep(step: any): string {
+  const maneuver = step?.maneuver || {};
+  const type = String(maneuver.type || "continue");
+  const modifier = String(maneuver.modifier || "").replace(/_/g, " ");
+  const road = String(step?.name || "").trim();
+  if (type === "depart") return road ? `Start on ${road}` : "Start your journey";
+  if (type === "arrive") return "Arrive at your destination";
+  if (type === "roundabout" || type === "rotary") return `Enter the roundabout${road ? ` onto ${road}` : ""}`;
+  if (type === "turn" || type === "end of road") return `Turn ${modifier || "ahead"}${road ? ` onto ${road}` : ""}`;
+  if (type === "merge") return `Merge${modifier ? ` ${modifier}` : ""}${road ? ` onto ${road}` : ""}`;
+  if (type === "fork") return `Keep ${modifier || "straight"}${road ? ` onto ${road}` : ""}`;
+  if (type === "on ramp" || type === "off ramp") return `${type === "on ramp" ? "Take the ramp" : "Exit the ramp"}${road ? ` onto ${road}` : ""}`;
+  return road ? `Continue on ${road}` : "Continue ahead";
+}
+
 async function geocode(query: string): Promise<Point | null> {
   const response = await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=" + encodeURIComponent(query));
   if (!response.ok) throw new Error("Place search is temporarily unavailable.");
@@ -55,6 +71,7 @@ export default function LiveMap({ destination }: { destination: string }) {
   const [mapReady, setMapReady] = useState(false);
   const [gpsStatus, setGpsStatus] = useState("Use my location");
   const [routeSummary, setRouteSummary] = useState("");
+  const [routeSteps, setRouteSteps] = useState<Array<{ instruction: string; distance: number }>>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,6 +99,7 @@ export default function LiveMap({ destination }: { destination: string }) {
     async function updateDestination() {
       if (!mapReady || !destination.trim() || !mapRef.current || !LRef.current) {
         setRouteSummary("");
+        setRouteSteps([]);
         return;
       }
       try {
@@ -101,7 +119,7 @@ export default function LiveMap({ destination }: { destination: string }) {
         if (originRef.current) {
           const origin = originRef.current;
           setMapStatus("Calculating road route…");
-          const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${point.lon},${point.lat}?overview=full&geometries=geojson&steps=false`);
+          const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${point.lon},${point.lat}?overview=full&geometries=geojson&steps=true`);
           if (!response.ok) throw new Error("Road routing is temporarily unavailable.");
           const data = await response.json();
           if (cancelled) return;
@@ -110,8 +128,10 @@ export default function LiveMap({ destination }: { destination: string }) {
             if (routeRef.current) { routeRef.current.remove(); routeRef.current = null; }
             setMapStatus(data.message || "No driving route found for these points.");
             setRouteSummary("");
+            setRouteSteps([]);
             return;
           }
+          setRouteSteps((route.legs?.[0]?.steps || []).slice(0, 8).map((step: any) => ({ instruction: describeStep(step), distance: Number(step.distance) || 0 })));
           if (routeRef.current) routeRef.current.remove();
           routeRef.current = L.geoJSON(route.geometry, { style: { color: "#7048e8", weight: 5, opacity: 0.9 } }).addTo(mapRef.current);
           mapRef.current.fitBounds(routeRef.current.getBounds(), { padding: [30, 30] });
@@ -149,15 +169,17 @@ export default function LiveMap({ destination }: { destination: string }) {
         try {
           const target = await geocode(destination.trim());
           if (!target || !L || !mapRef.current) return;
-          const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${point.lon},${point.lat};${target.lon},${target.lat}?overview=full&geometries=geojson&steps=false`);
+          const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${point.lon},${point.lat};${target.lon},${target.lat}?overview=full&geometries=geojson&steps=true`);
           if (!response.ok) throw new Error("Road routing is temporarily unavailable.");
           const data = await response.json();
           const route = data.code === "Ok" ? data.routes?.[0] : null;
           if (!route || !Array.isArray(route.geometry?.coordinates) || route.geometry.coordinates.length < 2) {
             setMapStatus(data.message || "No driving route found for these points.");
             setRouteSummary("");
+            setRouteSteps([]);
             return;
           }
+          setRouteSteps((route.legs?.[0]?.steps || []).slice(0, 8).map((step: any) => ({ instruction: describeStep(step), distance: Number(step.distance) || 0 })));
           if (routeRef.current) routeRef.current.remove();
           routeRef.current = L.geoJSON(route.geometry, { style: { color: "#7048e8", weight: 5, opacity: 0.9 } }).addTo(mapRef.current);
           if (destinationMarkerRef.current) destinationMarkerRef.current.remove();
@@ -181,6 +203,7 @@ export default function LiveMap({ destination }: { destination: string }) {
       <div className="live-map-status"><span className="map-live-dot" /><span>{mapStatus}</span>{routeSummary && <strong>{routeSummary}</strong>}</div>
       <button type="button" className="live-map-location" onClick={useLocation}>{gpsStatus}</button>
     </div>
+    {routeSteps.length > 0 && <div className="route-instructions" aria-label="Route step preview"><div className="route-instructions-heading">ROUTE STEPS <span>PREVIEW ONLY</span></div>{routeSteps.map((step, index) => <div className="route-instruction" key={index}><span className="route-instruction-number">{index + 1}</span><span>{step.instruction}</span><small>{step.distance >= 1000 ? `${(step.distance / 1000).toFixed(1)} km` : `${Math.round(step.distance)} m`}</small></div>)}</div>}
     <p className="live-map-attribution-note">Map data © OpenStreetMap · Routing by OSRM demo service. Estimates may be incomplete; not turn-by-turn navigation.</p>
   </div>;
 }
