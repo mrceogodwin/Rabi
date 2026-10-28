@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
+type JourneyEntry = { id: string; destination: string; origin: string; mode: "drive" | "walk"; createdAt: string };
 type IconName = "pin" | "mic" | "arrow" | "car" | "walk" | "clock" | "target" | "chevron" | "spark" | "coffee" | "shopping" | "home" | "briefcase" | "compass" | "heart" | "layers";
 function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true as const };
@@ -51,6 +52,8 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("Explore");
   const [saved, setSaved] = useState<string[]>(["Ring Road"]);
   const [savedLoaded, setSavedLoaded] = useState(false);
+  const [journeys, setJourneys] = useState<JourneyEntry[]>([]);
+  const [journeysLoaded, setJourneysLoaded] = useState(false);
   const [locationLabel, setLocationLabel] = useState("Current location");
   const [locationStatus, setLocationStatus] = useState<"demo" | "ready" | "denied" | "unsupported">("demo");
   const [rideType, setRideType] = useState<"standard" | "comfort" | "xl">("standard");
@@ -72,6 +75,21 @@ export default function Home() {
     try { window.localStorage.setItem("rabi:saved-places", JSON.stringify(saved)); }
     catch { /* Keep the in-memory state if storage is unavailable. */ }
   }, [saved, savedLoaded]);
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem("rabi:journeys");
+      if (stored) {
+        const parsed: unknown = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.every((item) => item && typeof item.id === "string" && typeof item.destination === "string" && typeof item.origin === "string" && (item.mode === "drive" || item.mode === "walk") && typeof item.createdAt === "string")) setJourneys(parsed.slice(0, 20));
+      }
+    } catch { /* Journey history remains available for this session if storage is unavailable. */ }
+    setJourneysLoaded(true);
+  }, []);
+  useEffect(() => {
+    if (!journeysLoaded) return;
+    try { window.localStorage.setItem("rabi:journeys", JSON.stringify(journeys.slice(0, 20))); }
+    catch { /* Keep the in-memory history if storage is unavailable. */ }
+  }, [journeys, journeysLoaded]);
   function requestLocation() {
     if (!("geolocation" in navigator)) {
       setLocationStatus("unsupported");
@@ -98,8 +116,10 @@ export default function Home() {
   function choosePlace(name: string) { setDestination(name); setSelected(name); setFocused(false); setNotice(""); }
   function exploreRoute() {
     if (!destination.trim()) { setFocused(true); setNotice("Enter a destination to preview your journey."); return; }
-    setSelected(destination.trim()); setFocused(false);
-    setNotice("Preview only — live maps, GPS and route calculations are not connected yet.");
+    const destinationName = destination.trim();
+    setSelected(destinationName); setFocused(false);
+    setJourneys((current) => [{ id: `${Date.now()}-${destinationName}`, destination: destinationName, origin: locationLabel, mode, createdAt: new Date().toISOString() }, ...current.filter((journey) => journey.destination.toLowerCase() !== destinationName.toLowerCase())].slice(0, 20));
+    setNotice("Journey preview saved on this device. Live maps and route calculations are not connected yet.");
   }
   function toggleSaved(name: string) { setSaved((current) => current.includes(name) ? current.filter((item) => item !== name) : [...current, name]); }
   function previewRideRequest() {
@@ -169,6 +189,11 @@ export default function Home() {
       </div>
     </section>
 
+
+    <section className="history-section" id="journey-history">
+      <div className="section-heading"><div><span className="eyebrow">RECENT ACTIVITY</span><h2>{activeTab === "Journeys" ? "Your recent journeys." : "Pick up where you left off."}</h2><p>Journey previews saved on this device only.</p></div>{journeys.length > 0 && <button className="text-action" onClick={() => setJourneys([])}>Clear history</button>}</div>
+      {journeys.length === 0 ? <div className="history-empty"><span className="history-empty-icon"><Icon name="compass" size={22}/></span><div><strong>No journey previews yet</strong><p>Search for a destination above and choose “Preview my journey” to keep it here.</p></div></div> : <div className="history-list">{journeys.map((journey) => <article className="history-item" key={journey.id}><span className="history-mode-icon"><Icon name={journey.mode === "drive" ? "car" : "walk"} size={19}/></span><div className="history-item-copy"><strong>{journey.destination}</strong><small>From {journey.origin} · {journey.mode === "drive" ? "Drive" : "Walk"} · {new Date(journey.createdAt).toLocaleString()}</small></div><button className="saved-go" onClick={() => { setDestination(journey.destination); setSelected(journey.destination); setMode(journey.mode); setNotice("Loaded saved journey preview. Route data is illustrative."); window.scrollTo({top:0,behavior:"smooth"}); }}>Open <Icon name="chevron" size={15}/></button><button className="save-button" aria-label={"Remove journey to " + journey.destination} onClick={() => setJourneys((current) => current.filter((item) => item.id !== journey.id))}>×</button></article>)}</div>}
+    </section>
     <section className="ride-section" id="ride">
       <div className="section-heading"><div><span className="eyebrow">GET THERE TOGETHER</span><h2>A ride when you need one.</h2><p>Choose a ride type and preview your pickup details. Booking is not live yet.</p></div><span className="ride-badge">RIDE PREVIEW</span></div>
       <div className="ride-layout">
@@ -200,6 +225,6 @@ export default function Home() {
     </section>
 
     <footer className="footer"><a className="footer-brand" href="#"><BrandMark small/> rabi<span className="brand-dot">.</span></a><span>Made for the way we move.</span><span className="footer-note">Early product preview · Routes are illustrative</span></footer>
-    <nav className="mobile-nav" aria-label="Mobile navigation"><button className={activeTab === "Explore" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => {setActiveTab("Explore");window.scrollTo({top:0,behavior:"smooth"});}}><Icon name="compass" size={20}/><span>Explore</span></button><button className={activeTab === "Saved" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => {setActiveTab("Saved");document.getElementById("saved")?.scrollIntoView({behavior:"smooth"});}}><Icon name="heart" size={20}/><span>Saved</span></button><button className={activeTab === "Journeys" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => {setActiveTab("Journeys");document.getElementById("journeys")?.scrollIntoView({behavior:"smooth"});setNotice("Journey history will be available when accounts are connected.");}}><Icon name="layers" size={20}/><span>Journeys</span></button><button className="mobile-nav-item" onClick={() => setNotice("Profile and account features are coming soon.")}><Icon name="briefcase" size={20}/><span>Profile</span></button></nav>
+    <nav className="mobile-nav" aria-label="Mobile navigation"><button className={activeTab === "Explore" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => {setActiveTab("Explore");window.scrollTo({top:0,behavior:"smooth"});}}><Icon name="compass" size={20}/><span>Explore</span></button><button className={activeTab === "Saved" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => {setActiveTab("Saved");document.getElementById("saved")?.scrollIntoView({behavior:"smooth"});}}><Icon name="heart" size={20}/><span>Saved</span></button><button className={activeTab === "Journeys" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => {setActiveTab("Journeys");document.getElementById("journey-history")?.scrollIntoView({behavior:"smooth"});}}><Icon name="layers" size={20}/><span>Journeys</span></button><button className="mobile-nav-item" onClick={() => setNotice("Profile and account features are coming soon.")}><Icon name="briefcase" size={20}/><span>Profile</span></button></nav>
   </main>;
 }
