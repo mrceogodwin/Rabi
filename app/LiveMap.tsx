@@ -86,9 +86,15 @@ export default function LiveMap({ destination }: { destination: string }) {
       }
       try {
         setMapStatus("Finding destination…");
+        setRouteSummary("");
         const point = await geocode(destination.trim());
         if (cancelled) return;
-        if (!point) { setMapStatus("No place found. Try adding the city or state."); return; }
+        if (!point) {
+          if (routeRef.current) { routeRef.current.remove(); routeRef.current = null; }
+          if (destinationMarkerRef.current) { destinationMarkerRef.current.remove(); destinationMarkerRef.current = null; }
+          setMapStatus("No place found. Try adding the city or state.");
+          return;
+        }
         const L = LRef.current;
         if (destinationMarkerRef.current) destinationMarkerRef.current.remove();
         destinationMarkerRef.current = L.marker([point.lat, point.lon]).addTo(mapRef.current).bindPopup(point.label);
@@ -99,8 +105,13 @@ export default function LiveMap({ destination }: { destination: string }) {
           if (!response.ok) throw new Error("Road routing is temporarily unavailable.");
           const data = await response.json();
           if (cancelled) return;
-          const route = data.routes?.[0];
-          if (!route) { setMapStatus("No driving route found for these points."); setRouteSummary(""); return; }
+          const route = data.code === "Ok" ? data.routes?.[0] : null;
+          if (!route || !Array.isArray(route.geometry?.coordinates) || route.geometry.coordinates.length < 2) {
+            if (routeRef.current) { routeRef.current.remove(); routeRef.current = null; }
+            setMapStatus(data.message || "No driving route found for these points.");
+            setRouteSummary("");
+            return;
+          }
           if (routeRef.current) routeRef.current.remove();
           routeRef.current = L.geoJSON(route.geometry, { style: { color: "#7048e8", weight: 5, opacity: 0.9 } }).addTo(mapRef.current);
           mapRef.current.fitBounds(routeRef.current.getBounds(), { padding: [30, 30] });
@@ -139,9 +150,14 @@ export default function LiveMap({ destination }: { destination: string }) {
           const target = await geocode(destination.trim());
           if (!target || !L || !mapRef.current) return;
           const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${point.lon},${point.lat};${target.lon},${target.lat}?overview=full&geometries=geojson&steps=false`);
+          if (!response.ok) throw new Error("Road routing is temporarily unavailable.");
           const data = await response.json();
-          const route = data.routes?.[0];
-          if (!route) { setMapStatus("No driving route found for these points."); return; }
+          const route = data.code === "Ok" ? data.routes?.[0] : null;
+          if (!route || !Array.isArray(route.geometry?.coordinates) || route.geometry.coordinates.length < 2) {
+            setMapStatus(data.message || "No driving route found for these points.");
+            setRouteSummary("");
+            return;
+          }
           if (routeRef.current) routeRef.current.remove();
           routeRef.current = L.geoJSON(route.geometry, { style: { color: "#7048e8", weight: 5, opacity: 0.9 } }).addTo(mapRef.current);
           if (destinationMarkerRef.current) destinationMarkerRef.current.remove();
@@ -151,7 +167,12 @@ export default function LiveMap({ destination }: { destination: string }) {
           setMapStatus("Route calculated · verify conditions before travel");
         } catch { setMapStatus("Could not calculate a route right now. Try again later."); }
       }
-    }, () => setGpsStatus("Location permission needed"), { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+    }, (error) => {
+      setGpsStatus(error.code === error.PERMISSION_DENIED ? "Location permission needed" : "Could not get location");
+      setMapStatus(error.code === error.PERMISSION_DENIED
+        ? "Location permission was denied. Enable it in browser settings to calculate a route."
+        : "Could not get your GPS position. Check device location settings and try again.");
+    }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
   }
 
   return <div className="live-map-wrap">

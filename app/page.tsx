@@ -120,7 +120,7 @@ export default function Home() {
     const destinationName = destination.trim();
     setSelected(destinationName); setFocused(false);
     setJourneys((current) => [{ id: `${Date.now()}-${destinationName}`, destination: destinationName, origin: locationLabel, mode, createdAt: new Date().toISOString() }, ...current.filter((journey) => journey.destination.toLowerCase() !== destinationName.toLowerCase())].slice(0, 20));
-    setNotice("Journey preview saved on this device. Live maps and route calculations are not connected yet.");
+    setNotice("Journey preview saved on this device. The map above can search the destination; a driving route appears after you share your GPS location.");
   }
   function toggleSaved(name: string) { setSaved((current) => current.includes(name) ? current.filter((item) => item !== name) : [...current, name]); }
   function previewRideRequest() {
@@ -145,10 +145,10 @@ export default function Home() {
             <div className="search-fields">
               <div className="field-block"><label htmlFor="from">STARTING POINT</label><button id="from" className="location-value" onClick={requestLocation}><span className="current-dot"/> {locationLabel} <span className="location-status">{locationStatus === "ready" ? "GPS READY" : locationStatus === "denied" ? "DENIED" : locationStatus === "unsupported" ? "UNAVAILABLE" : "GET GPS"}</span></button></div>
               <div className="field-divider"/>
-              <div className="field-block destination-field"><label htmlFor="destination">WHERE TO?</label><input id="destination" value={destination} onChange={(event) => {setDestination(event.target.value);setFocused(true);setNotice("");}} onFocus={() => setFocused(true)} placeholder="Search a place or address" autoComplete="off"/><button className="mic-button" aria-label="Voice search coming soon" onClick={() => setNotice("Voice search is planned for a future version.")}><Icon name="mic" size={19}/></button></div>
+              <div className="field-block destination-field"><label htmlFor="destination">WHERE TO?</label><input id="destination" value={destination} onChange={(event) => {setDestination(event.target.value);setFocused(true);setNotice("");}} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); exploreRoute(); } }} onFocus={() => setFocused(true)} placeholder="Search a place or address" autoComplete="off"/><button className="mic-button" aria-label="Voice search coming soon" onClick={() => setNotice("Voice search is planned for a future version.")}><Icon name="mic" size={19}/></button></div>
             </div>
           </div>
-          {focused && destination.length > 0 && <div className="suggestions">{matches.length ? matches.map((place) => <button key={place.name} className="suggestion" onClick={() => choosePlace(place.name)}><span className="suggestion-icon"><Icon name="pin" size={17}/></span><span className="suggestion-copy"><strong>{place.name}</strong><small>{place.detail} · {place.category}</small></span><Icon name="chevron" size={16}/></button>) : <p className="no-results">No demo match. Real place search is not connected yet.</p>}</div>}
+          {focused && destination.length > 0 && <div className="suggestions">{matches.length ? matches.map((place) => <button key={place.name} className="suggestion" onClick={() => choosePlace(place.name)}><span className="suggestion-icon"><Icon name="pin" size={17}/></span><span className="suggestion-copy"><strong>{place.name}</strong><small>{place.detail} · {place.category}</small></span><Icon name="chevron" size={16}/></button>) : <p className="no-results">No quick suggestion. Press “Preview my journey” to search this destination on the live map.</p>}</div>}
           <button className="primary-button" onClick={exploreRoute}><span>Preview my journey</span><Icon name="arrow" size={18}/></button>
           {notice && <p className="notice" role="status">{notice}</p>}
         </div>
@@ -156,7 +156,7 @@ export default function Home() {
       </div>
 
       <div className="map-panel">
-        <div className="map-topline"><div><span className="map-live-dot"/><span>YOUR CITY AT A GLANCE</span></div><button className="map-control" onClick={() => setNotice("Live map controls will be available after map integration.")} aria-label="Map controls"><Icon name="target" size={18}/></button></div>
+        <div className="map-topline"><div><span className="map-live-dot"/><span>YOUR CITY AT A GLANCE</span></div><button className="map-control" onClick={() => setNotice("Use the map zoom controls or “Use my location” button to move around the live map.")} aria-label="Map controls"><Icon name="target" size={18}/></button></div>
         <LiveMap destination={selected} />
         <div className="map-footer"><span><span className="footer-dot"/> Route preview</span><span>BENIN CITY · DEMO</span></div>
       </div>
