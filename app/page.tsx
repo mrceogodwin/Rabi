@@ -123,6 +123,38 @@ export default function Home() {
     setNotice("Journey preview saved on this device. The map above can search the destination; a driving route appears after you share your GPS location.");
   }
   function toggleSaved(name: string) { setSaved((current) => current.includes(name) ? current.filter((item) => item !== name) : [...current, name]); }
+  function startVoiceSearch() {
+    const speechWindow = window as unknown as { SpeechRecognition?: new () => any; webkitSpeechRecognition?: new () => any };
+    const SpeechRecognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setNotice("Voice search is not supported by this browser. Type your destination instead.");
+      return;
+    }
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-NG";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      setNotice("Listening for your destination…");
+      recognition.onresult = (event: any) => {
+        const spoken = String(event.results?.[0]?.[0]?.transcript || "").trim();
+        if (!spoken) { setNotice("I could not hear a destination. Please try again or type it."); return; }
+        setDestination(spoken);
+        setSelected(spoken);
+        setFocused(false);
+        setNotice("Heard “" + spoken + "”. Press “Preview my journey” to search the map.");
+      };
+      recognition.onerror = (event: any) => {
+        setNotice(event.error === "not-allowed"
+          ? "Microphone permission was denied. Allow microphone access in browser settings or type your destination."
+          : "Voice search could not complete. Try again or type your destination.");
+      };
+      recognition.start();
+    } catch {
+      setNotice("Voice search could not start. Try again or type your destination.");
+    }
+  }
+
   function previewRideRequest() {
     if (!rideDestination.trim()) { setRideNotice("Enter where you want to go to preview a ride."); return; }
     setRideNotice("Ride preview only. No driver has been contacted and no booking or payment was created. Driver matching, live fares and payments need a backend connection.");
@@ -145,7 +177,7 @@ export default function Home() {
             <div className="search-fields">
               <div className="field-block"><label htmlFor="from">STARTING POINT</label><button id="from" className="location-value" onClick={requestLocation}><span className="current-dot"/> {locationLabel} <span className="location-status">{locationStatus === "ready" ? "GPS READY" : locationStatus === "denied" ? "DENIED" : locationStatus === "unsupported" ? "UNAVAILABLE" : "GET GPS"}</span></button></div>
               <div className="field-divider"/>
-              <div className="field-block destination-field"><label htmlFor="destination">WHERE TO?</label><input id="destination" value={destination} onChange={(event) => {setDestination(event.target.value);setFocused(true);setNotice("");}} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); exploreRoute(); } }} onFocus={() => setFocused(true)} placeholder="Search a place or address" autoComplete="off"/><button className="mic-button" aria-label="Voice search coming soon" onClick={() => setNotice("Voice search is planned for a future version.")}><Icon name="mic" size={19}/></button></div>
+              <div className="field-block destination-field"><label htmlFor="destination">WHERE TO?</label><input id="destination" value={destination} onChange={(event) => {setDestination(event.target.value);setFocused(true);setNotice("");}} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); exploreRoute(); } }} onFocus={() => setFocused(true)} placeholder="Search a place or address" autoComplete="off"/><button className="mic-button" aria-label="Search destination by voice" onClick={startVoiceSearch}><Icon name="mic" size={19}/></button></div>
             </div>
           </div>
           {focused && destination.length > 0 && <div className="suggestions">{matches.length ? matches.map((place) => <button key={place.name} className="suggestion" onClick={() => choosePlace(place.name)}><span className="suggestion-icon"><Icon name="pin" size={17}/></span><span className="suggestion-copy"><strong>{place.name}</strong><small>{place.detail} · {place.category}</small></span><Icon name="chevron" size={16}/></button>) : <p className="no-results">No quick suggestion. Press “Preview my journey” to search this destination on the live map.</p>}</div>}
