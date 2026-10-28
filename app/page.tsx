@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 type IconName = "pin" | "mic" | "arrow" | "car" | "walk" | "clock" | "target" | "chevron" | "spark" | "coffee" | "shopping" | "home" | "briefcase" | "compass" | "heart" | "layers";
 function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
@@ -50,6 +50,50 @@ export default function Home() {
   const [notice, setNotice] = useState("");
   const [activeTab, setActiveTab] = useState("Explore");
   const [saved, setSaved] = useState<string[]>(["Ring Road"]);
+  const [savedLoaded, setSavedLoaded] = useState(false);
+  const [locationLabel, setLocationLabel] = useState("Current location");
+  const [locationStatus, setLocationStatus] = useState<"demo" | "ready" | "denied" | "unsupported">("demo");
+  const [rideType, setRideType] = useState<"standard" | "comfort" | "xl">("standard");
+  const [ridePickup, setRidePickup] = useState("Current location");
+  const [rideDestination, setRideDestination] = useState("");
+  const [rideNotice, setRideNotice] = useState("");
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem("rabi:saved-places");
+      if (stored) {
+        const parsed: unknown = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.every((item) => typeof item === "string")) setSaved(parsed);
+      }
+    } catch { /* Storage may be disabled; saved places still work for this session. */ }
+    setSavedLoaded(true);
+  }, []);
+  useEffect(() => {
+    if (!savedLoaded) return;
+    try { window.localStorage.setItem("rabi:saved-places", JSON.stringify(saved)); }
+    catch { /* Keep the in-memory state if storage is unavailable. */ }
+  }, [saved, savedLoaded]);
+  function requestLocation() {
+    if (!("geolocation" in navigator)) {
+      setLocationStatus("unsupported");
+      setNotice("This browser does not support device location. You can still enter a starting point manually.");
+      return;
+    }
+    setNotice("Requesting device location permission…");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        setLocationLabel(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+        setLocationStatus("ready");
+        setRidePickup(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+        setNotice(`Device location received (about ${Math.round(accuracy)} m accuracy). Coordinates stay in this browser; address lookup and routing are not connected.`);
+      },
+      (error) => {
+        setLocationStatus(error.code === error.PERMISSION_DENIED ? "denied" : "demo");
+        setNotice(error.code === error.PERMISSION_DENIED ? "Location permission was denied. Enter your starting point manually or enable location in browser settings." : "Could not get your location. Check device location settings and try again, or enter a starting point manually.");
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
+    );
+  }
   const matches = useMemo(() => places.filter((place) => place.name.toLowerCase().includes(destination.toLowerCase())), [destination]);
   function choosePlace(name: string) { setDestination(name); setSelected(name); setFocused(false); setNotice(""); }
   function exploreRoute() {
@@ -58,6 +102,10 @@ export default function Home() {
     setNotice("Preview only — live maps, GPS and route calculations are not connected yet.");
   }
   function toggleSaved(name: string) { setSaved((current) => current.includes(name) ? current.filter((item) => item !== name) : [...current, name]); }
+  function previewRideRequest() {
+    if (!rideDestination.trim()) { setRideNotice("Enter where you want to go to preview a ride."); return; }
+    setRideNotice("Ride preview only. No driver has been contacted and no booking or payment was created. Driver matching, live fares and payments need a backend connection.");
+  }
 
   return <main className="app-shell">
     <header className="topbar">
@@ -74,7 +122,7 @@ export default function Home() {
         <div className="search-card">
           <div className="search-row"><div className="route-dots"><span className="origin-dot"/><span className="route-dash"/><span className="destination-dot"/></div>
             <div className="search-fields">
-              <div className="field-block"><label htmlFor="from">STARTING POINT</label><button id="from" className="location-value" onClick={() => setNotice("Live location will be available after GPS permission is integrated.")}><span className="current-dot"/> Current location <span className="location-status">DEMO</span></button></div>
+              <div className="field-block"><label htmlFor="from">STARTING POINT</label><button id="from" className="location-value" onClick={requestLocation}><span className="current-dot"/> {locationLabel} <span className="location-status">{locationStatus === "ready" ? "GPS READY" : locationStatus === "denied" ? "DENIED" : locationStatus === "unsupported" ? "UNAVAILABLE" : "GET GPS"}</span></button></div>
               <div className="field-divider"/>
               <div className="field-block destination-field"><label htmlFor="destination">WHERE TO?</label><input id="destination" value={destination} onChange={(event) => {setDestination(event.target.value);setFocused(true);setNotice("");}} onFocus={() => setFocused(true)} placeholder="Search a place or address" autoComplete="off"/><button className="mic-button" aria-label="Voice search coming soon" onClick={() => setNotice("Voice search is planned for a future version.")}><Icon name="mic" size={19}/></button></div>
             </div>
@@ -118,6 +166,26 @@ export default function Home() {
         <article className="route-card featured"><div className="route-card-top"><span className="route-icon"><Icon name={mode === "drive" ? "car" : "walk"} size={21}/></span><span className="recommended">SUGGESTED</span></div><h3>{mode === "drive" ? "The easy way" : "A simple stroll"}</h3><p>{mode === "drive" ? "A straightforward route to your destination." : "A walk-friendly route, when supported."}</p><div className="route-card-bottom"><span><Icon name="clock" size={16}/> {mode === "drive" ? "12 min" : "26 min"} <small>· sample estimate</small></span><Icon name="arrow" size={18}/></div></article>
         <article className="route-card"><div className="route-card-top"><span className="route-icon pale"><Icon name="layers" size={21}/></span><span className="quiet-label">OPTION 02</span></div><h3>{mode === "drive" ? "The scenic way" : "Take it slow"}</h3><p>Another way to think about your trip.</p><div className="route-card-bottom"><span><Icon name="clock" size={16}/> {mode === "drive" ? "18 min" : "32 min"} <small>· sample only</small></span><Icon name="arrow" size={18}/></div></article>
         <article className="route-card coming-card"><span className="coming-icon"><Icon name="spark" size={22}/></span><h3>More, soon.</h3><p>Traffic-aware routes and helpful local places are on the roadmap.</p><span className="coming-label">IN DEVELOPMENT</span></article>
+      </div>
+    </section>
+
+    <section className="ride-section" id="ride">
+      <div className="section-heading"><div><span className="eyebrow">GET THERE TOGETHER</span><h2>A ride when you need one.</h2><p>Choose a ride type and preview your pickup details. Booking is not live yet.</p></div><span className="ride-badge">RIDE PREVIEW</span></div>
+      <div className="ride-layout">
+        <div className="ride-options" role="group" aria-label="Choose ride type">
+          <button className={rideType === "standard" ? "ride-option selected" : "ride-option"} onClick={() => setRideType("standard")}><span className="ride-option-icon"><Icon name="car" size={22}/></span><span className="ride-option-copy"><strong>Rabi Standard</strong><small>Everyday trips · 4 seats</small></span><span className="ride-fare">₦1,500–₦3,000<small>sample range</small></span></button>
+          <button className={rideType === "comfort" ? "ride-option selected" : "ride-option"} onClick={() => setRideType("comfort")}><span className="ride-option-icon comfort"><Icon name="car" size={22}/></span><span className="ride-option-copy"><strong>Rabi Comfort</strong><small>Extra comfort · 4 seats</small></span><span className="ride-fare">₦2,500–₦4,500<small>sample range</small></span></button>
+          <button className={rideType === "xl" ? "ride-option selected" : "ride-option"} onClick={() => setRideType("xl")}><span className="ride-option-icon xl"><Icon name="car" size={22}/></span><span className="ride-option-copy"><strong>Rabi XL</strong><small>More room · up to 6 seats</small></span><span className="ride-fare">₦3,000–₦6,000<small>sample range</small></span></button>
+          <p className="fare-disclaimer">Illustrative Nigerian-naira ranges only — not live quotes or a promise of availability.</p>
+        </div>
+        <form className="ride-request-card" onSubmit={(event) => { event.preventDefault(); previewRideRequest(); }}>
+          <div className="ride-card-heading"><span className="ride-card-mark"><Icon name="car" size={19}/></span><div><strong>Plan your pickup</strong><small>{rideType === "standard" ? "Rabi Standard" : rideType === "comfort" ? "Rabi Comfort" : "Rabi XL"} selected</small></div></div>
+          <label htmlFor="ride-pickup">PICKUP</label><input id="ride-pickup" value={ridePickup} onChange={(event) => setRidePickup(event.target.value)} required placeholder="Enter pickup point"/>
+          <label htmlFor="ride-destination">DESTINATION</label><input id="ride-destination" value={rideDestination} onChange={(event) => setRideDestination(event.target.value)} required placeholder="Where are you going?"/>
+          <button className="primary-button" type="submit"><span>Preview ride request</span><Icon name="arrow" size={18}/></button>
+          {rideNotice && <p className="notice" role="status">{rideNotice}</p>}
+          <div className="safety-note"><span>✓</span><p><strong>Safety is part of the plan.</strong> Verified drivers, trip sharing, emergency support and ride tracking must be implemented before real rides launch.</p></div>
+        </form>
       </div>
     </section>
 
